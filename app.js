@@ -75,16 +75,15 @@ async function searchTeam(name) {
   return (partial || teams[0]).team;
 }
 
-async function getRecentFixtures(teamId, last = 5) {
-  // Removed &last= parameter for Free Tier compliance and sliced locally instead
-  const data = await apiFetch(`/fixtures?team=${teamId}&status=FT`);
+async function getRecentFixtures(teamId, season, last = 5) {
+  // Added season parameter to prevent "Season field is required" error
+  const data = await apiFetch(`/fixtures?team=${teamId}&season=${season}&status=FT`);
   const fixtures = data.response || [];
   return fixtures.slice(-last);
 }
 
 async function getHeadToHead(team1Id, team2Id) {
   try {
-    // Removed &last= parameter for Free Tier compliance and sliced locally instead
     const data = await apiFetch(`/fixtures/headtohead?h2h=${team1Id}-${team2Id}`);
     const h2hFixtures = data.response || [];
     return h2hFixtures.slice(-5);
@@ -93,9 +92,9 @@ async function getHeadToHead(team1Id, team2Id) {
   }
 }
 
-async function getInjuries(teamId) {
+async function getInjuries(teamId, season) {
   try {
-    const data = await apiFetch(`/injuries?team=${teamId}`);
+    const data = await apiFetch(`/injuries?team=${teamId}&season=${season}`);
     return data.response || [];
   } catch (e) {
     return [];
@@ -125,6 +124,8 @@ function summariseForm(fixtures, teamId, teamName) {
 }
 
 async function performLiveAnalysis(homeName, awayName, dateStr) {
+  const seasonYear = new Date(dateStr).getFullYear() || 2026;
+
   const [homeTeam, awayTeam] = await Promise.all([
     searchTeam(homeName),
     searchTeam(awayName)
@@ -136,14 +137,14 @@ async function performLiveAnalysis(homeName, awayName, dateStr) {
 
   const promises = [];
   if (homeTeam) {
-    promises.push(getRecentFixtures(homeTeam.id, 6));
-    promises.push(getInjuries(homeTeam.id));
+    promises.push(getRecentFixtures(homeTeam.id, seasonYear, 6));
+    promises.push(getInjuries(homeTeam.id, seasonYear));
   } else {
     promises.push(Promise.resolve([]), Promise.resolve([]));
   }
   if (awayTeam) {
-    promises.push(getRecentFixtures(awayTeam.id, 6));
-    promises.push(getInjuries(awayTeam.id));
+    promises.push(getRecentFixtures(awayTeam.id, seasonYear, 6));
+    promises.push(getInjuries(awayTeam.id, seasonYear));
   } else {
     promises.push(Promise.resolve([]), Promise.resolve([]));
   }
