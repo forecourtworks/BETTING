@@ -76,14 +76,18 @@ async function searchTeam(name) {
 }
 
 async function getRecentFixtures(teamId, last = 5) {
-  const data = await apiFetch(`/fixtures?team=${teamId}&last=${last}`);
-  return data.response || [];
+  // Removed &last= parameter for Free Tier compliance and sliced locally instead
+  const data = await apiFetch(`/fixtures?team=${teamId}&status=FT`);
+  const fixtures = data.response || [];
+  return fixtures.slice(-last);
 }
 
 async function getHeadToHead(team1Id, team2Id) {
   try {
-    const data = await apiFetch(`/fixtures/headtohead?h2h=${team1Id}-${team2Id}&last=5`);
-    return data.response || [];
+    // Removed &last= parameter for Free Tier compliance and sliced locally instead
+    const data = await apiFetch(`/fixtures/headtohead?h2h=${team1Id}-${team2Id}`);
+    const h2hFixtures = data.response || [];
+    return h2hFixtures.slice(-5);
   } catch (e) {
     return [];
   }
@@ -100,7 +104,7 @@ async function getInjuries(teamId) {
 
 function formFromFixtures(fixtures, teamId) {
   if (!fixtures.length) return 'No recent data';
-  return fixtures.slice(0, 5).map(f => {
+  return fixtures.slice(-5).map(f => {
     const isHome = f.teams.home.id === teamId;
     const goalsFor = isHome ? f.goals.home : f.goals.away;
     const goalsAgainst = isHome ? f.goals.away : f.goals.home;
@@ -113,7 +117,7 @@ function formFromFixtures(fixtures, teamId) {
 function summariseForm(fixtures, teamId, teamName) {
   if (!fixtures.length) return `${teamName}: no recent finished matches found.`;
   const form = formFromFixtures(fixtures, teamId);
-  const last = fixtures[0];
+  const last = fixtures[fixtures.length - 1];
   const isHome = last.teams.home.id === teamId;
   const opponent = isHome ? last.teams.away.name : last.teams.home.name;
   const score = `${last.goals.home ?? '-'}-${last.goals.away ?? '-'}`;
@@ -233,7 +237,7 @@ function renderAnalysis(a) {
 
   if (a.h2h.length) {
     rationale += `<p><strong>Head-to-head (last ${Math.min(5, a.h2h.length)} meetings):</strong><br>`;
-    a.h2h.slice(0, 5).forEach(m => {
+    a.h2h.slice(-5).forEach(m => {
       const date = m.fixture?.date ? m.fixture.date.slice(0, 10) : '';
       rationale += `• ${date}: ${m.teams.home.name} ${m.goals.home ?? '-'}-${m.goals.away ?? '-'} ${m.teams.away.name}<br>`;
     });
