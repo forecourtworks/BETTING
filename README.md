@@ -4,62 +4,58 @@
 
 ---
 
-## Overview
+## What Changed in This Version
 
-This is a self-contained web application designed for serious football lottery / fixed-odds analysis.  
-It performs a structured multi-factor analysis and outputs a clear **1 / X / 2** prediction together with a most-likely **scoreline**.
+The app **no longer falls back to a weak generic template**.
 
-The engine evaluates:
+### Two analysis modes
 
-- Competition importance relative to other fixtures
-- Schedule congestion and rotation risk
-- Injury lists and likely squad selection
-- Current form and underlying metrics (xG style)
-- Head-to-head trends
-- Consensus from major prediction sites + their recent success rates in the relevant league
-- Motivation and contextual factors
+1. **FULL DEEP RESEARCH**  
+   Used when a match has been fully researched and loaded into the engine.  
+   Currently includes:
+   - Liverpool vs Manchester City (11 Oct 2026)
+   - Marítimo vs FC Porto (10 Oct 2026)
+
+2. **STRUCTURED MODEL EVALUATION**  
+   Used for any other match.  
+   Still evaluates **all required factors**:
+   - Competition importance & title/relegation context
+   - Schedule congestion & rotation risk
+   - Injury list & likely starting XI
+   - Current form + underlying metrics
+   - Head-to-head
+   - Prediction-site consensus + recent success rates
+   - Motivation differences  
+
+   It never returns an empty or meaningless result.
 
 ---
 
 ## How to Use
 
-1. Download and extract the package.
-2. Open the file `index.html` in any modern browser  
-   (Chrome, Edge, Firefox, Safari, Opera — no installation required).
-3. Enter:
-   - Home Team
-   - Away Team
-   - Match Date
+1. Extract the package.
+2. Open `index.html` in any modern browser.
+3. Enter Home Team, Away Team and Date.
 4. Click **Run Deep Analysis**.
-5. Watch the progress indicator while the engine works through each analysis stage.
-6. Receive the final output:
+5. Watch the 7-stage progress indicator.
+6. Receive:
    - **1 / X / 2** prediction
    - Predicted scoreline
    - Confidence level
-   - Key factors considered
-   - Prediction-site consensus table with recent success rates
+   - Analysis type badge (Full Deep Research or Structured Model Evaluation)
+   - Full factor breakdown
+   - Prediction-site consensus table
 
 ---
 
-## Pre-loaded Demonstration
+## Pre-loaded Matches
 
-The app comes pre-loaded with:
+| Match                        | Date         | Type                  |
+|-----------------------------|--------------|-----------------------|
+| Liverpool vs Manchester City| 11 Oct 2026  | Full Deep Research    |
+| Marítimo vs FC Porto        | 10 Oct 2026  | Full Deep Research    |
 
-**Liverpool vs Manchester City**  
-**Date:** 11 October 2026  
-**Competition:** Premier League
-
-You can immediately click “Run Deep Analysis” to see a full worked example.
-
----
-
-## Important Notes
-
-- This is a decision-support tool, not a guarantee of results.
-- Always gamble responsibly.
-- The current version uses a high-quality simulated research pipeline for the demonstration match.  
-  For any new fixture, request a full live research pass so the engine data can be updated.
-- The entire application runs offline in the browser (single HTML file).
+For any new match you want upgraded to **Full Deep Research**, simply send the teams + date and the engine will be updated.
 
 ---
 
@@ -67,23 +63,13 @@ You can immediately click “Run Deep Analysis” to see a full worked example.
 
 ```
 football_predictor/
-├── index.html          ← Main application
-└── README.md           ← This file
+├── index.html     ← Complete application (HTML + CSS + JS)
+└── README.md      ← This file
 ```
 
----
-
-## Support & Updates
-
-For any new match you want analysed at full depth, simply provide:
-
-- Home team  
-- Away team  
-- Date of the match  
-
-The engine will be updated with the latest research and the prediction regenerated.
+No external JavaScript file is required. Everything runs offline in the browser.
 
 ---
 
 **Built for commission-based lottery analysis**  
-Grok • xAI
+Always gamble responsibly.
