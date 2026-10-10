@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Grok Football Lottery Predictor</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-container">
+    <header>
+      <h1>Grok Football Lottery Predictor</h1>
+      <p class="subtitle">Commission-based • Deep multi-factor analysis engine</p>
+    </header>
+
+    <main class="card">
+      <div class="form-group">
+        <label for="homeTeam">Home Team</label>
+        <input type="text" id="homeTeam" value="" placeholder="e.g. Arsenal, Real Madrid, Inter..." />
+      </div>
+
+      <div class="form-group">
+        <label for="awayTeam">Away Team</label>
+        <input type="text" id="awayTeam" value="" placeholder="e.g. Chelsea, Barcelona, Milan..." />
+      </div>
+
+      <div class="form-group">
+        <label for="matchDate">Match Date</label>
+        <input type="date" id="matchDate" value="2026-10-11" />
+      </div>
+
+      <button id="runAnalysis" class="btn-primary">Run Deep Analysis</button>
+
+      <!-- RESULT CONTAINER - 3 SECTION STRUCTURE -->
+      <div id="resultContainer" class="result-container hidden">
+        <!-- Section 1 -->
+        <section class="section section-1">
+          <h2>Section 1 – Independent Match Prediction</h2>
+          <div class="score-box">
+            <div class="score" id="predictedScore">–</div>
+            <div class="teams" id="matchTeams">Enter teams and run analysis</div>
+            <div class="confidence" id="confidenceLevel">Confidence: –</div>
+          </div>
+        </section>
+
+        <!-- Section 2 -->
+        <section class="section section-2">
+          <h2>Section 2 – Prediction Rationale</h2>
+          <div class="rationale-content" id="rationaleContent">
+            <!-- Populated by JS -->
+          </div>
+        </section>
+
+        <!-- Section 3 -->
+        <section class="section section-3">
+          <h2>Section 3 – Prediction Consensus</h2>
+          <div id="consensusContent">
+            <!-- Populated by JS -->
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <footer>
+      <small>Powered by deep multi-factor analysis • For entertainment purposes only</small>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
