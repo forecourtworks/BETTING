@@ -155,18 +155,23 @@ function poissonP(l, k) {
 function scoreGrid(lh, la) {
   const M = 8;
   let pH = 0, pD = 0, pA = 0, over25 = 0, btts = 0, total = 0;
-  let best = { p: -1, h: 0, a: 0 };
+  const bestBy = { home: { p: -1, h: 1, a: 0 }, draw: { p: -1, h: 1, a: 1 }, away: { p: -1, h: 0, a: 1 } };
   for (let h = 0; h <= M; h++) {
     for (let a = 0; a <= M; a++) {
       const p = poissonP(lh, h) * poissonP(la, a);
       total += p;
-      if (h > a) pH += p; else if (h === a) pD += p; else pA += p;
+      const k = h > a ? 'home' : h === a ? 'draw' : 'away';
+      if (k === 'home') pH += p; else if (k === 'draw') pD += p; else pA += p;
       if (h + a > 2) over25 += p;
       if (h > 0 && a > 0) btts += p;
-      if (p > best.p) best = { p, h, a };
+      if (p > bestBy[k].p) bestBy[k] = { p, h, a };
     }
   }
-  return { pH: pH / total, pD: pD / total, pA: pA / total, over25: over25 / total, btts: btts / total, best };
+  const g = { pH: pH / total, pD: pD / total, pA: pA / total, over25: over25 / total, btts: btts / total };
+  // Show the likeliest scoreline *within the likeliest outcome*, so the score never contradicts the 1/X/2 call.
+  const lead = g.pH >= g.pD && g.pH >= g.pA ? 'home' : g.pA >= g.pD ? 'away' : 'draw';
+  g.best = { ...bestBy[lead], p: bestBy[lead].p / total };
+  return g;
 }
 // H, A = { gf, ga, f } -> expected goals on a league-normalised scale
 function lambdas(H, A) {
@@ -414,4 +419,265 @@ function analyze(d) {
    Rationale writer
    ========================================================= */
 function writeRationale(r) {
-  co
+  const { home, away, d } = r;
+  const H = esc(home.team.name), A = esc(away.team.name);
+  const out = [];
+  const p = (t) => `<p>${t}</p>`;
+  const h3 = (t) => `<h3>${t}</h3>`;
+
+  // 1. Fixture
+  let fx = h3('Fixture details');
+  if (r.target) {
+    const compName = esc(r.comp.name) + (r.target.league.round ? `, ${esc(r.target.league.round)}` : '');
+    fx += p(`${H} host ${A} at ${esc(r.venue.name || 'a venue not listed')}${r.venue.city ? `, ${esc(r.venue.city)}` : ''} in the ${compName}. Kick-off is ${fmtEAT(r.target.fixture.timestamp)}. API-Football lists this fixture for season ${d.season}.${r.swapped ? ' The order you entered was reversed against the official fixture list, so the home and away roles follow the schedule.' : ''}`);
+  } else {
+    fx += p(`API-Football returned no scheduled fixture between ${H} and ${A} around ${esc(fmtDateOnly(d.date))}. This analysis therefore treats ${H} as the home side${r.venue.name ? ` at ${esc(r.venue.name)}` : ''} and assumes a ${r.sameLeague ? 'league' : r.compKind === 'cup' ? 'domestic cup' : 'continental or one-off'} setting. Kick-off time could not be confirmed.`);
+  }
+  if (home.coach || away.coach) {
+    fx += p(`On the touchline, ${H} are managed by ${esc(home.coach || 'a manager the API could not identify')} and ${A} by ${esc(away.coach || 'a manager the API could not identify')}.`);
+  }
+  out.push(fx);
+
+  // 2. Standings
+  const stTxt = (s) => {
+    if (!s.stand) return `${esc(s.team.name)}'s league position was not available.`;
+    const st = s.stand, a = st.all;
+    return `${esc(s.team.name)} are ${ordinal(st.rank)} in the ${esc(s.league ? s.league.name : 'league')} on ${st.points} points from ${a.played} games (${a.win}W ${a.draw}D ${a.lose}L, goal difference ${st.goalsDiff >= 0 ? '+' : ''}${st.goalsDiff})`;
+  };
+  let standing = h3(r.sameLeague ? 'League standings' : 'Standings in their own leagues');
+  if (home.stand && away.stand && r.sameLeague) {
+    const gap = Math.abs(home.stand.rank - away.stand.rank), pts = Math.abs(home.stand.points - away.stand.points);
+    standing += p(`${stTxt(home)}, while ${stTxt(away)}. That is a gap of ${gap} place${gap === 1 ? '' : 's'} and ${pts} point${pts === 1 ? '' : 's'}.`);
+  } else {
+    standing += p(`${stTxt(home)}. ${stTxt(away)}.${!r.sameLeague && home.league && away.league ? ` These tables are not directly comparable, because ${esc(home.league.name)} and ${esc(away.league.name)} differ in strength.` : ''}`);
+  }
+  out.push(standing);
+
+  // 3. Form
+  let form = h3('Recent form');
+  const fTxt = (s) => s.form.length
+    ? `${esc(s.team.name)}: ${formLine(s.form)} (oldest to newest, last ${s.form.length}), scoring ${f1(s.formGF)} and conceding ${f1(s.formGA)} per game in all competitions.`
+    : `${esc(s.team.name)}: no finished matches before this date were found for season ${d.season}.`;
+  form += p(fTxt(home)) + p(fTxt(away));
+  out.push(form);
+
+  // 4. Goals & defence
+  let gd = h3('Goalscoring and defensive patterns');
+  const gdTxt = (s) => s.form.length
+    ? `${esc(s.team.name)} kept ${s.cleanSheets} clean sheet${s.cleanSheets === 1 ? '' : 's'} and failed to score in ${s.failedToScore} of their last ${s.form.length}.${s.seasonGF != null ? ` Over the season they average ${f1(s.seasonGF)} scored and ${f1(s.seasonGA)} conceded.` : ''}`
+    : '';
+  gd += p(`${gdTxt(home)} ${gdTxt(away)}`.trim() || 'Not enough match data to describe scoring and defensive patterns.');
+  out.push(gd);
+
+  // 5. H2H
+  let h2 = h3('Head-to-head');
+  if (d.h2h.length) {
+    let hw = 0, aw = 0, dr = 0, hg = 0, ag = 0;
+    d.h2h.forEach((f) => {
+      const x = perspective(f, home.team.id);
+      hg += x.gf; ag += x.ga;
+      if (x.res === 'W') hw++; else if (x.res === 'L') aw++; else dr++;
+    });
+    const lastF = d.h2h[d.h2h.length - 1];
+    const lp = perspective(lastF, home.team.id);
+    h2 += p(`In their last ${d.h2h.length} meetings, ${H} won ${hw}, ${A} won ${aw} and ${dr} ended level, with a combined goal tally of ${hg}-${ag} (${H} first). The latest meeting was ${esc(lp.comp)} on ${esc(new Date(lastF.fixture.timestamp * 1000).toISOString().slice(0, 10))}, a ${lp.gf}-${lp.ga} ${lp.res === 'W' ? 'win' : lp.res === 'L' ? 'loss' : 'draw'} for ${H}.`);
+  } else {
+    h2 += p(`The two clubs have no recorded meetings in API-Football's head-to-head data, so history plays no part in this prediction.`);
+  }
+  out.push(h2);
+
+  // 6. Injuries
+  let inj = h3('Injuries and availability');
+  const iTxt = (s) => {
+    if (s.inj === null) return `${esc(s.team.name)}: injury data could not be loaded.`;
+    if (!s.inj.length) return `${esc(s.team.name)}: no injuries are listed for their most recent fixture.`;
+    const names = s.inj.slice(0, 6).map((x) => `${esc(x.name)}${x.reason ? ` (${esc(x.reason)})` : ''}`).join(', ');
+    return `${esc(s.team.name)}: ${s.inj.length} player${s.inj.length === 1 ? '' : 's'} listed, including ${names}.`;
+  };
+  inj += p(`${iTxt(home)} ${iTxt(away)} API-Football's injury feed often lags team news, so check the final line-ups.`);
+  out.push(inj);
+
+  // 7. Fixture-type specific
+  if (r.sameLeague) {
+    let ha = h3('Home advantage');
+    const hs = home.homeSplit, as = away.awaySplit;
+    if (hs && as) {
+      ha += p(`${H} take ${f1(hs.ppg)} points per home league game (${hs.n} played), scoring ${f1(hs.gf)} and conceding ${f1(hs.ga)}. ${A} take ${f1(as.ppg)} per away league game (${as.n} played), scoring ${f1(as.gf)} and conceding ${f1(as.ga)}. ${hs.ppg - as.ppg > 0.4 ? 'The venue split favours the hosts clearly.' : hs.ppg - as.ppg < -0.4 ? 'The visitors travel unusually well, which cuts against the usual home edge.' : 'The venue split is modest, so home advantage matters less than usual.'}`);
+    } else {
+      ha += p(`There were too few home and away league results to split their records, so the model applies a standard home boost of about 10% to ${H}'s expected goals.`);
+    }
+    out.push(ha);
+  }
+
+  if (r.crossLeague) {
+    const fav = home.strength * 1 >= away.strength ? home : away;
+    const dog = fav === home ? away : home;
+    const F = esc(fav.team.name), D = esc(dog.team.name);
+
+    if (r.dims.includes('tier')) {
+      let t = h3('Cross-tier dynamics: quality gap and mismatch');
+      t += p(`The model's league-strength coefficients rate ${esc(home.league ? home.league.name : H)} at ${f1(home.strength)} and ${esc(away.league ? away.league.name : A)} at ${f1(away.strength)} on a 0 to 1 scale. ${r.strengthGap >= 0.12 ? `${F} come from the stronger division, which usually means a clear edge in squad depth and individual quality.` : 'The gap is small, so squad quality should be broadly comparable.'}`);
+      t += p(`Rotation risk matters here. ${F} have played ${fav.load21} match${fav.load21 === 1 ? '' : 'es'} in the 21 days before this date, ${D} ${dog.load21}.${fav.load21 >= 6 ? ` That is a heavy load, so a rotated ${F} line-up is plausible and the model treats the favourite's edge with some caution.` : ' That is a manageable load, so a near-full-strength line-up is the safer assumption.'}`);
+      t += p(`For the underdog, the numbers suggest ${dog.ga <= 1.1 ? `${D} are hard to break down and could sit in a low block, relying on set pieces and counters` : `${D} concede enough that a low block alone may not hold`}${dog.gf >= 1.5 ? `, and they carry real attacking threat` : `, but they create limited chances (${f1(dog.gf)} per game)`}. With little to lose, underdogs often play with freedom. ${fav.gf >= 1.8 ? `${F}'s scoring rate of ${f1(fav.gf)} per game suggests they can still dominate possession and territory.` : ''}`);
+      out.push(t);
+    }
+
+    if (r.dims.includes('continental')) {
+      let c = h3('Continental dynamics');
+      const rnd = r.target && r.target.league.round ? r.target.league.round : null;
+      c += p(`${r.comp ? `This is listed as a ${esc(r.comp.name)} fixture${rnd ? ` (${esc(rnd)})` : ''}.` : 'No official listing was found, so a continental setting is assumed from the clubs\' countries.'} Domestic form translates imperfectly, which is why the model rescales each side's goals by its league's strength before comparing them.`);
+      c += p(`${home.team.country !== away.team.country ? `Travel from ${esc(away.team.country || 'abroad')} to ${esc(home.team.country || 'the host country')} adds fatigue and unfamiliar conditions for ${A}.` : 'Both clubs are from the same country, so travel is not a factor.'} ${rnd && /leg|round of|quarter|semi|play-?off/i.test(rnd) ? 'Knockout ties can be played over two legs, where aggregate scoring and away goals strategy shape how cautiously each side starts.' : 'Stakes depend on the stage of the tournament. Group or league-phase games reward risk less than knockout ties.'}`);
+      out.push(c);
+    }
+
+    if (r.dims.includes('cup')) {
+      let c = h3('Domestic cup dynamics');
+      const rnd = r.target && r.target.league.round ? r.target.league.round : null;
+      c += p(`${r.comp ? `The fixture is listed in the ${esc(r.comp.name)}${rnd ? `, ${esc(rnd)}` : ''}.` : 'No official listing was found, so a domestic cup tie is assumed because the clubs play in different divisions of the same country.'} If the score is level after 90 minutes, extra time and a penalty shootout may follow, depending on the competition and round. Some cups use replays or go straight to penalties in early rounds. Check the rules for this one.`);
+      c += p(`Fixture congestion cuts both ways: ${F} played ${fav.load21} and ${D} played ${dog.load21} matches in the prior 21 days. Cup ties often see changes to the starting XI, which narrows the quality gap. The model does not predict extra time or penalties, so the score shown is a 90-minute scoreline.`);
+      out.push(c);
+    }
+
+    if (r.dims.includes('normalized')) {
+      let n = h3('Normalised statistics');
+      const m = r.main;
+      n += p(`To compare teams from different divisions, each side's goals scored are scaled up or down by its league-strength factor, and goals conceded are scaled the opposite way. The resulting expected goals (xG proxy) for this match are ${f1(m.lh)} for ${H} and ${f1(m.la)} for ${A}.`);
+      n += `<div class="tablewrap"><table class="norm"><thead><tr><th>Team</th><th>Goals for</th><th>Goals against</th><th>Rating factor</th><th>Normalised attack</th><th>Normalised defence</th></tr></thead><tbody>
+        <tr><td>${H}</td><td>${f1(home.gf)}</td><td>${f1(home.ga)}</td><td>${f1(home.f)}</td><td>${f1(m.atkH)}</td><td>${f1(m.concH)}</td></tr>
+        <tr><td>${A}</td><td>${f1(away.gf)}</td><td>${f1(away.ga)}</td><td>${f1(away.f)}</td><td>${f1(m.atkA)}</td><td>${f1(m.concA)}</td></tr></tbody></table></div>`;
+      n += p('Rating factors are heuristic estimates, not official coefficients. They are the weakest input in the model, so treat cross-league scorelines with extra caution.');
+      out.push(n);
+    }
+  }
+
+  // 8. Model view
+  const g = r.grid;
+  let mv = h3('How the prediction was reached');
+  mv += p(`Blending season averages (60%) with the last ${CONFIG.FORM_WINDOW} matches (40%) gives expected goals of ${f1(r.main.lh)} for ${H} and ${f1(r.main.la)} for ${A}. A Poisson scoreline model gives ${pct(g.pH)} for ${H} to win, ${pct(g.pD)} for a draw and ${pct(g.pA)} for ${A} to win. The predicted score, ${g.best.h}-${g.best.a}, is the likeliest scoreline within the likeliest outcome.`);
+  out.push(mv);
+
+  return out.join('');
+}
+
+/* =========================================================
+   Rendering
+   ========================================================= */
+function render(r) {
+  const { home, away, grid: g, d } = r;
+  const cmpLabel = r.target ? `${r.comp.name}${r.target.league.round ? ' · ' + r.target.league.round : ''}` : (r.sameLeague ? `${home.league.name} (assumed)` : 'Competition unconfirmed');
+  const when = r.target ? fmtEAT(r.target.fixture.timestamp) : `${fmtDateOnly(d.date)} (kick-off time unconfirmed)`;
+  const typeLabel = r.sameLeague && r.compKind === 'league' ? 'Same-league fixture' : 'Cross-league fixture';
+
+  const lensRows = r.lenses.map((l) => {
+    const w = leader(l.g);
+    const txt = w === 'home' ? `${home.team.name} win` : w === 'away' ? `${away.team.name} win` : 'Draw';
+    return `<li>${esc(l.name)}: ${esc(txt)} (${l.g.best.h}-${l.g.best.a})</li>`;
+  }).join('');
+  const leaders = r.lenses.map((l) => leader(l.g));
+  const agree = leaders.every((x) => x === leaders[0]);
+  const consensus = agree
+    ? `All ${leaders.length} lens${leaders.length === 1 ? '' : 'es'} point to the same outcome: ${leaders[0] === 'draw' ? 'a draw' : (leaders[0] === 'home' ? home.team.name : away.team.name) + ' to win'}.`
+    : 'The lenses disagree on the outcome, which is why confidence is held down.';
+
+  const srcRows = d.sources.map((s) => `<li><span class="${s.ok ? 'ok' : 'bad'}">${s.ok ? 'OK' : 'Missing'}</span> ${esc(s.label)}: ${esc(s.detail)}</li>`).join('');
+  const limits = [
+    'Free plan: 10 requests per minute, 100 per day, and access limited to certain seasons.',
+    'Injury data can lag real team news and is read from the most recent fixture record.',
+    'League-strength factors are heuristic, so cross-league scorelines are the least reliable output.',
+    'The model uses goals only. Lineups, tactics, weather, suspensions and betting markets are not included.',
+    ...d.notes,
+  ].map((x) => `<li>${esc(x)}</li>`).join('');
+
+  $('#results').innerHTML = `
+  <section class="block" aria-labelledby="s1">
+    <h2 id="s1">Independent match prediction</h2>
+    <div class="board">
+      <div class="teams">
+        <div class="team">${home.team.logo ? `<img class="crest" src="${esc(home.team.logo)}" alt="" onerror="this.remove()">` : ''}<b>${esc(home.team.name)}</b><span>Home</span></div>
+        <div class="digits" aria-label="Predicted score ${g.best.h} to ${g.best.a}"><span class="cell">${g.best.h}</span><span class="sep">-</span><span class="cell">${g.best.a}</span></div>
+        <div class="team away">${away.team.logo ? `<img class="crest" src="${esc(away.team.logo)}" alt="" onerror="this.remove()">` : ''}<b>${esc(away.team.name)}</b><span>Away</span></div>
+      </div>
+      <div class="meta">
+        <div>${esc(typeLabel)}: ${esc(cmpLabel)}</div>
+        <div>Venue: ${esc(r.venue.name || 'not listed')}${r.venue.city ? ', ' + esc(r.venue.city) : ''}</div>
+        <div>Kick-off: ${esc(when)}</div>
+      </div>
+      <span class="conf ${r.level}">Confidence: ${r.level}</span>
+      <div class="odds">
+        <div class="strip" role="img" aria-label="Win probabilities"><i class="h" style="width:${g.pH * 100}%"></i><i class="d" style="width:${g.pD * 100}%"></i><i class="a" style="width:${g.pA * 100}%"></i></div>
+        <div class="labels"><span>${esc(home.team.name)} ${pct(g.pH)}</span><span>Draw ${pct(g.pD)}</span><span>${esc(away.team.name)} ${pct(g.pA)}</span></div>
+      </div>
+      <div class="chips">
+        <span>xG proxy ${f1(r.main.lh)} - ${f1(r.main.la)}</span>
+        <span>Over 2.5 goals ${pct(g.over25)}</span>
+        <span>Both teams score ${pct(g.btts)}</span>
+        <span>Chance of exactly ${g.best.h}-${g.best.a}: ${pct(g.best.p)}</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" aria-labelledby="s2">
+    <h2 id="s2">Prediction rationale</h2>
+    <div class="prose">${writeRationale(r)}</div>
+  </section>
+
+  <section class="block" aria-labelledby="s3">
+    <h2 id="s3">Prediction consensus and metadata</h2>
+    <div class="meta-grid">
+      <div class="card"><h3>Live data sources</h3>
+        <ul><li>API-Football (api-sports.io), season ${d.season}${d.season !== d.derivedSeason ? ` (derived ${d.derivedSeason}, plan fallback)` : ' (derived from match date)'}</li>${srcRows}<li>${stats.requests} API requests used in this run</li></ul>
+      </div>
+      <div class="card"><h3>Coverage</h3>
+        <ul><li>Data coverage: ${pct(r.coverage)} of key inputs found</li><li>Form window: last ${CONFIG.FORM_WINDOW} matches (sliced locally, no <code>last</code> parameter)</li><li>Head-to-head window: last ${CONFIG.H2H_WINDOW} meetings (sliced locally)</li></ul>
+      </div>
+      <div class="card wide"><h3>Model consensus view</h3>
+        <ul>${lensRows}</ul>
+        <p style="margin:10px 0 0;font-size:.92rem">${esc(consensus)}</p>
+      </div>
+      <div class="card wide"><h3>Platform limitations</h3><ul>${limits}</ul></div>
+    </div>
+  </section>`;
+}
+
+/* =========================================================
+   UI wiring
+   ========================================================= */
+function showError(msg) {
+  const el = $('#error');
+  if (!msg) { el.hidden = true; el.innerHTML = ''; return; }
+  el.hidden = false;
+  el.innerHTML = `<strong>Analysis could not finish</strong>${esc(msg)}`;
+}
+
+async function run() {
+  const homeName = $('#home').value.trim();
+  const awayName = $('#away').value.trim();
+  const date = $('#date').value;
+  if (!homeName || !awayName) return showError('Enter both a home team and an away team.');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return showError('Pick a match date.');
+
+  showError(null);
+  $('#results').innerHTML = '';
+  stats.requests = 0;
+  const btn = $('#run');
+  btn.disabled = true; btn.textContent = 'Analysing...';
+  try {
+    const data = await gather({ homeName, awayName, date, withCoaches: $('#coaches').checked });
+    setStatus('Building prediction...');
+    const result = analyze(data);
+    render(result);
+    setStatus(null);
+    $('#results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (err) {
+    setStatus(null);
+    showError(err instanceof ApiError ? err.message : `Unexpected error: ${err.message}`);
+    console.error(err);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Run Deep Analysis';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  $('#date').value = new Date().toLocaleDateString('en-CA');
+  $('#form').addEventListener('submit', (e) => { e.preventDefault(); run(); });
+});
