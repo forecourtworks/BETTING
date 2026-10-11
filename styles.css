@@ -101,7 +101,8 @@ input:focus-visible, button:focus-visible {
 .error strong { display: block; margin-bottom: 4px; }
 
 /* ---------- results ---------- */
-#results { margin-top: 24px; display: grid; gap: 28px; }
+#results { margin-top: 24px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; }
+.block { min-width: 0; }
 .block h2 { margin: 0 0 12px; font-size: 1.25rem; font-weight: 800; font-stretch: 108%; letter-spacing: -0.01em; }
 
 /* Section 1: the scoreboard */
@@ -112,7 +113,7 @@ input:focus-visible, button:focus-visible {
   padding: 22px 18px 18px;
 }
 .board .teams {
-  display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: center;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 10px; align-items: center;
 }
 .board .team { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .board .team.away { text-align: right; align-items: flex-end; }
@@ -122,7 +123,7 @@ input:focus-visible, button:focus-visible {
 .digits {
   display: flex; align-items: center; gap: 8px;
   font-weight: 900; font-stretch: 100%;
-  font-size: clamp(3rem, 14vw, 5.5rem);
+  font-size: clamp(2.2rem, 11vw, 5.5rem);
   line-height: 1; color: var(--amber);
   font-variant-numeric: tabular-nums;
 }
@@ -175,18 +176,26 @@ table.norm th:first-child, table.norm td:first-child { text-align: left; }
 table.norm th { font-weight: 700; background: #eef2ee; }
 
 /* Section 3 */
-.meta-grid { display: grid; gap: 14px; grid-template-columns: 1fr 1fr; }
-.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; }
+.meta-grid { display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.card { min-width: 0; overflow-wrap: anywhere; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; }
 .card h3 { margin: 0 0 8px; font-size: 0.98rem; font-weight: 700; }
 .card ul { margin: 0; padding-left: 18px; font-size: 0.92rem; }
 .card li { margin: 3px 0; }
 .card.wide { grid-column: 1 / -1; }
 .ok { color: var(--win); font-weight: 700; }
 .bad { color: var(--loss); font-weight: 700; }
-@media (max-width: 720px) { .meta-grid { grid-template-columns: 1fr; } }
+@media (max-width: 720px) { .meta-grid { grid-template-columns: minmax(0, 1fr); } }
 
 .foot { margin-top: 36px; font-size: 0.82rem; color: var(--ink-soft); max-width: 60ch; }
 
 @media (prefers-reduced-motion: reduce) {
   .status .bar i { animation: none; width: 100%; }
+}
+
+@media (max-width: 420px) {
+  body { padding-inline: 12px; }
+  .board { padding: 18px 12px 14px; }
+  .board img.crest { width: 34px; height: 34px; }
+  .digits { gap: 4px; }
+  .prose { padding: 16px 14px 4px; font-size: 1rem; }
 }

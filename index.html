@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Grok Football Match Predictor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="masthead">
+    <h1>Grok Football Match Predictor</h1>
+    <p>Independent score predictions and written rationale for league fixtures and cross-league ties, built on live API-Football data.</p>
+  </header>
+
+  <form id="form" class="panel" novalidate>
+    <div class="field">
+      <label for="home">Home team</label>
+      <input id="home" name="home" type="text" placeholder="Arsenal, Como" autocomplete="off" required>
+    </div>
+    <div class="field">
+      <label for="away">Away team</label>
+      <input id="away" name="away" type="text" placeholder="Wrexham, Roma, Barcelona" autocomplete="off" required>
+    </div>
+    <div class="field">
+      <label for="date">Match date</label>
+      <input id="date" name="date" type="date" required>
+    </div>
+    <label class="check">
+      <input id="coaches" type="checkbox" checked>
+      <span>Look up managers <small>(2 extra requests)</small></span>
+    </label>
+    <button id="run" type="submit">Run Deep Analysis</button>
+  </form>
+
+  <section id="status" class="status" role="status" aria-live="polite" hidden></section>
+  <section id="error" class="error" role="alert" hidden></section>
+  <main id="results"></main>
+
+  <footer class="foot">
+    Predictions are statistical estimates, not betting advice. Free-plan API-Football limits: 10 requests per minute, 100 per day.
+  </footer>
+
+  <script src="app.js" defer></script>
+</body>
+</html>

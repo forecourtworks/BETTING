@@ -1,73 +1,23 @@
-# Grok Football Lottery Predictor
+# Grok Football Match Predictor
 
-**Commission-based • Fixture-authenticated • Multi-factor engine**
+Single-page web app (plain HTML, CSS and JavaScript, no build step) that predicts a score and writes a rationale for same-league and cross-league fixtures, using live data from API-Football.
 
----
+## Run it
+1. Keep `index.html`, `styles.css` and `app.js` in one folder.
+2. Open `index.html` in a modern browser (needs internet for the API).
+3. Enter home team, away team and match date, then press **Run Deep Analysis**.
 
-## New Features in This Version
+## Output
+1. **Independent match prediction**: scoreboard, venue, kick-off in EAT, confidence, 1/X/2 probabilities.
+2. **Prediction rationale**: fixture, standings, form, goals, head-to-head, injuries, plus home advantage (same league) or cross-tier / continental / cup / normalised-stats sections (cross-league).
+3. **Consensus and metadata**: data sources, coverage, three-lens consensus, limitations.
 
-### 1. Fixture Authentication
-- Primary check via Forebet
-- Fallback to other official schedule sources
-- Clear authentication status shown before any prediction
+## Free-plan handling
+- No `last=` parameter anywhere; form (6) and head-to-head (10) are sliced locally.
+- Season is derived from the match date; if the plan blocks it, the app falls back to the newest allowed season and says so.
+- Built-in limiter keeps to 9 requests per minute. One run uses about 8-12 requests (100 per day on the free plan).
 
-### 2. Independent Prediction
-- The engine always produces its own **1 / X / 2** + scoreline
-- Clearly labelled as “INDEPENDENT PREDICTION”
+## Security note
+The API key is in `app.js` and is visible to anyone who opens the page. Move calls behind a small server and rotate the key before sharing publicly.
 
-### 3. 10-Site Consensus Check
-- Compares the independent prediction against 10 well-known prediction sites
-- Reports:
-  - How many sites agree
-  - Names of the agreeing sites
-- Full breakdown table included
-
-### 4. Input Validation
-- Rejects obviously fake / non-existent team names
-- Shows “INVALID INPUT – NO PREDICTION” instead of inventing a result
-
-### 5. Analysis Modes
-| Mode | When used |
-|------|-----------|
-| **FULL DEEP RESEARCH** | Match has been fully researched and loaded |
-| **STRUCTURED MODEL EVALUATION** | Real-looking teams without pre-loaded research |
-| **INVALID INPUT** | Fake or non-existent team names |
-
----
-
-## Pre-loaded Full Research Matches
-
-- Liverpool vs Manchester City (11 Oct 2026)
-- Marítimo vs FC Porto (10 Oct 2026)
-
----
-
-## How to Use
-
-1. Extract the package
-2. Open `index.html` in any modern browser
-3. Enter Home Team, Away Team and Date
-4. Click **Run Deep Analysis**
-5. Review:
-   - Fixture Authentication status
-   - Independent Prediction
-   - Consensus vs 10 sites
-   - Key factors
-   - Full site breakdown
-
----
-
-## Package Contents
-
-```
-football_predictor/
-├── index.html
-└── README.md
-```
-
-No external JavaScript file required. Runs fully offline in the browser.
-
----
-
-**Built for commission-based lottery analysis**  
-Always gamble responsibly.
+Predictions are statistical estimates, not betting advice.
