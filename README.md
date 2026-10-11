@@ -1,4 +1,4 @@
-# Grok Football Match Predictor
+# Operation Muhindi arudi India Football Match Predictor
 
 Single-page web app (plain HTML, CSS and JavaScript, no build step) that predicts a score and writes a rationale for same-league and cross-league fixtures, using live data from API-Football.
 
